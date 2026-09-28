@@ -50,8 +50,9 @@ jobs:
               core.setFailed('the repo variable FLEET_CI_CHANNEL_ID is not set');
               return;
             }
+            // Slack drops metadata whose event_type is not snake_case (a dot is refused).
             const metadata = {
-              event_type: 'pickypaws.ci_run_completed',
+              event_type: 'pickypaws_ci_run_completed',
               event_payload: {
                 run_id: run.id,
                 workflow,
