@@ -6,7 +6,7 @@ name: CI events
 # catches a lost line. The grammar is shared with the fleet's parser — change both together.
 on:
   workflow_run:
-    workflows: [CI, Main]
+    workflows: [CI, CI Frontend, Main]
     types: [completed]
 
 permissions: {}

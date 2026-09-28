@@ -1,0 +1,26 @@
+name: CI Frontend
+
+# Every pull request: the suite, as the job `checks` of `ci-frontend.yml` — the names the fleet's
+# ADR-077 rerun mapping (webapp shape) recognises, so a red here is rerun once per head.
+on:
+  pull_request:
+
+concurrency:
+  group: ci-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: node --test
+        run: node --test
+
