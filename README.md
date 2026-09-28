@@ -21,7 +21,7 @@ It holds only trivial code on purpose: `src/sum.js` and its `node --test` suite.
 
 ```sh
 node --test
-printf '%s' "$BODY" | node scripts/check-pr-body.mjs
+printf "%s" "$BODY" | node scripts/check-pr-body.mjs   # the CI pr-body gate, locally
 ```
 
 The CI line for this repo lands in the fleet test channel (`#fleet-pruebas`).
