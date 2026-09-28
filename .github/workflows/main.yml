@@ -1,0 +1,36 @@
+name: Main
+
+# One run per push to `main`: the suite, then a stand-in deploy. The fleet's deploy wait keys on a
+# workflow named exactly `Main`, as in picky-paws/webapp.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: node --test
+        run: node --test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Deploy (stand-in)
+        env:
+          SHA: ${{ github.sha }}
+        run: echo "deployed $SHA"

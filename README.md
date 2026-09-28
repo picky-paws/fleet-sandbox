@@ -1,0 +1,25 @@
+# fleet-sandbox
+
+The Picky Paws agent fleet's live-test target. In TEST mode the fleet's builders branch, change,
+open PRs, pass CI, get reviewed, merge and «deploy» here instead of in `picky-paws/webapp`, so the
+whole PR pipeline can be exercised end to end on real GitHub without touching the store.
+
+It holds only trivial code on purpose: `src/sum.js` and its `node --test` suite.
+
+## What runs
+
+- `CI` (`.github/workflows/ci.yml`, every pull request): `test` runs `node --test`; `pr-body`
+  checks the PR body with `scripts/check-pr-body.mjs` (the six H2 sections of
+  `.github/pull_request_template.md`).
+- `Main` (`.github/workflows/main.yml`, every push to `main`): the same tests, then a `deploy` job
+  that only echoes the commit — the fleet's deploy wait keys on a workflow named `Main`.
+- `CI events` (`.github/workflows/ci-events.yml`): after every `CI` or `Main` run completes,
+  whatever its conclusion, the Fleet Ops bot posts one strict `ci_run_completed` line to the
+  fleet's test channel — the fleet's fast wake-up path; GitHub stays authoritative.
+
+## Local
+
+```sh
+node --test
+printf '%s' "$BODY" | node scripts/check-pr-body.mjs
+```

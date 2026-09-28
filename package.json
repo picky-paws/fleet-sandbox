@@ -1,0 +1,13 @@
+{
+  "name": "fleet-sandbox",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Picky Paws fleet's live-test target: a trivial Node project.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

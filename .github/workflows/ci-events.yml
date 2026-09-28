@@ -1,0 +1,77 @@
+name: CI events
+
+# One strict `ci_run_completed` line per finished run of the workflows below, whatever its conclusion
+# (cancelled and early failures included), posted by the Fleet Ops bot to the fleet's CI channel. It
+# is only the fleet's fast wake-up path: GitHub stays the source of truth, and the fleet's CI deadline
+# catches a lost line. The grammar is shared with the fleet's parser — change both together.
+on:
+  workflow_run:
+    workflows: [CI, Main]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  ci-line:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Event fields reach the line through JS, never through a `run:` script: a branch name is
+      # attacker-controlled on a public repo.
+      - name: Build the ci_run_completed line
+        id: line
+        uses: actions/github-script@v9
+        env:
+          CHANNEL: ${{ vars.FLEET_CI_CHANNEL_ID }}
+        with:
+          script: |
+            // RFC 3986: unreserved characters stay, every other UTF-8 byte becomes %XX; `repo` keeps its `/`.
+            const enc = (v) =>
+              encodeURIComponent(String(v)).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+            const run = context.payload.workflow_run;
+            // A `run-name` replaces the run's own `name`, so the workflow's name comes from `workflow`.
+            const workflow = context.payload.workflow?.name ?? run.name;
+            const prs = (run.pull_requests ?? []).map((pr) => pr.number);
+            const conclusion = run.conclusion || 'none';
+            const [owner, name] = run.repository.full_name.split('/');
+            const line = [
+              'ci_run_completed',
+              `repo=${enc(owner)}/${enc(name)}`,
+              `run_id=${enc(run.id)}`,
+              `workflow=${enc(workflow)}`,
+              `event=${enc(run.event)}`,
+              `branch=${run.head_branch ? enc(run.head_branch) : '-'}`,
+              `sha=${enc(run.head_sha)}`,
+              `prs=${prs.length > 0 ? prs.join(',') : '-'}`,
+              `conclusion=${enc(conclusion)}`,
+            ].join(' ');
+            const channel = process.env.CHANNEL;
+            if (!channel) {
+              core.setFailed('the repo variable FLEET_CI_CHANNEL_ID is not set');
+              return;
+            }
+            const metadata = {
+              event_type: 'pickypaws.ci_run_completed',
+              event_payload: {
+                run_id: run.id,
+                workflow,
+                head_sha: run.head_sha,
+                head_branch: run.head_branch ?? '',
+                pr_numbers: prs,
+                conclusion,
+                event: run.event,
+              },
+            };
+            core.info(line);
+            core.setOutput(
+              'payload',
+              JSON.stringify({ channel, text: line, mrkdwn: false, unfurl_links: false, unfurl_media: false, metadata }),
+            );
+
+      - name: Post it as the Fleet Ops bot
+        uses: slackapi/slack-github-action@v4
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.FLEET_OPS_SLACK_BOT_TOKEN }}
+          errors: true
+          payload: ${{ steps.line.outputs.payload }}

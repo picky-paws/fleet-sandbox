@@ -1,0 +1,42 @@
+name: CI
+
+# Every pull request: the suite and the PR-body gate. A superseded push cancels its old run, so the
+# fleet sees real `cancelled` lines from `CI events` too.
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: node --test
+        run: node --test
+
+  pr-body:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Every PR body has the six template sections, three with real content
+        env:
+          # Never inline the body into `run:` — a PR body is attacker-controlled shell input.
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
+          PR_BODY_FILE="$RUNNER_TEMP/pr-body.md" node scripts/check-pr-body.mjs
