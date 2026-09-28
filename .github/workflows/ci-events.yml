@@ -25,18 +25,20 @@ jobs:
           CHANNEL: ${{ vars.FLEET_CI_CHANNEL_ID }}
         with:
           script: |
-            // RFC 3986: unreserved characters stay, every other UTF-8 byte becomes %XX; `repo` keeps its `/`.
+            // RFC 3986 unreserved characters and `/` stay, every other UTF-8 byte becomes %XX — byte for byte
+            // what the fleet's own formatter writes, so a parsed line re-formats to itself.
             const enc = (v) =>
-              encodeURIComponent(String(v)).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+              encodeURIComponent(String(v))
+                .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+                .replaceAll('%2F', '/');
             const run = context.payload.workflow_run;
             // A `run-name` replaces the run's own `name`, so the workflow's name comes from `workflow`.
             const workflow = context.payload.workflow?.name ?? run.name;
             const prs = (run.pull_requests ?? []).map((pr) => pr.number);
             const conclusion = run.conclusion || 'none';
-            const [owner, name] = run.repository.full_name.split('/');
             const line = [
               'ci_run_completed',
-              `repo=${enc(owner)}/${enc(name)}`,
+              `repo=${enc(run.repository.full_name)}`,
               `run_id=${enc(run.id)}`,
               `workflow=${enc(workflow)}`,
               `event=${enc(run.event)}`,
@@ -50,8 +52,9 @@ jobs:
               core.setFailed('the repo variable FLEET_CI_CHANNEL_ID is not set');
               return;
             }
+            // Slack drops metadata whose event_type is not snake_case (a dot is refused).
             const metadata = {
-              event_type: 'pickypaws.ci_run_completed',
+              event_type: 'pickypaws_ci_run_completed',
               event_payload: {
                 run_id: run.id,
                 workflow,
