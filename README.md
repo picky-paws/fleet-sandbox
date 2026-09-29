@@ -6,6 +6,8 @@ whole PR pipeline can be exercised end to end on real GitHub without touching th
 
 It holds only trivial code on purpose: `src/sum.js` and its `node --test` suite.
 
+`src/sub.js` exports `sub(a, b)`, which returns `a − b`.
+
 ## What runs
 
 - `CI` (`.github/workflows/ci.yml`, every pull request): `test` runs `node --test`; `pr-body`
