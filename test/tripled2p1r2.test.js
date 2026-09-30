@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { tripled2p1r2 } from '../src/tripled2p1r2.js';
+
+test('tripled2p1r2 returns a * 3', () => {
+  assert.equal(tripled2p1r2(2), 6);
+  assert.equal(tripled2p1r2(0), 0);
+  assert.equal(tripled2p1r2(-4), -12);
+  assert.equal(tripled2p1r2(1.5), 4.5);
+});
