@@ -46,6 +46,8 @@ jobs:
               `sha=${enc(run.head_sha)}`,
               `prs=${prs.length > 0 ? prs.join(',') : '-'}`,
               `conclusion=${enc(conclusion)}`,
+              // A rerun's completion is otherwise byte-identical to the original run's line.
+              `attempt=${run.run_attempt}`,
             ].join(' ');
             const channel = process.env.CHANNEL;
             if (!channel) {
