@@ -18,6 +18,8 @@ It holds only trivial code on purpose: `src/sum.js` and its `node --test` suite.
 
 `src/subS4B.js` exports `subS4B(a, b)`, which returns `a − b`.
 
+`src/subA1.js` exports `subA1(a, b)`, which returns `a − b`.
+
 ## What runs
 
 - `CI` (`.github/workflows/ci.yml`, every pull request): `test` runs `node --test`; `pr-body`
