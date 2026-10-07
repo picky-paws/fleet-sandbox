@@ -1,4 +1,4 @@
-# fleet-sandbox — smoke am14 (main)
+# fleet-sandbox
 
 The Picky Paws agent fleet's live-test target. In TEST mode the fleet's builders branch, change,
 open PRs, pass CI, get reviewed, merge and «deploy» here instead of in `picky-paws/webapp`, so the
