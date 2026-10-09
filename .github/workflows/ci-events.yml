@@ -1,10 +1,14 @@
 name: CI events
 
 # One strict `ci_run_completed` line per finished run of the workflows below, whatever its conclusion
-# (cancelled and early failures included), posted by the Fleet Ops bot to the fleet's CI channel. It
-# is only the fleet's fast wake-up path: GitHub stays the source of truth, and the fleet's CI deadline
-# catches a lost line. The grammar is shared with the fleet's parser — change both together.
+# (cancelled and early failures included), and one strict `branch_deleted` line per deleted branch,
+# posted by the Fleet Ops bot to the fleet's CI channel. They are only the fleet's fast wake-up path:
+# GitHub stays the source of truth, and the fleet's deadlines catch a lost line. The grammar is shared
+# with the fleet's parser — change both together.
 on:
+  # A branch deleted with no PR on it ends the fleet's PR entity for it without waking its owner
+  # (fleet ADR-083 am. 15); the webapp's copy is the same.
+  delete:
   workflow_run:
     workflows: [CI, CI Frontend, Main]
     types: [completed]
@@ -13,6 +17,7 @@ permissions: {}
 
 jobs:
   ci-line:
+    if: github.event_name == 'workflow_run'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -74,6 +79,56 @@ jobs:
             );
 
       - name: Post it as the Fleet Ops bot
+        uses: slackapi/slack-github-action@v4
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.FLEET_OPS_SLACK_BOT_TOKEN }}
+          errors: true
+          payload: ${{ steps.line.outputs.payload }}
+
+  # A tag's deletion posts nothing.
+  branch-line:
+    if: github.event_name == 'delete' && github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Event fields reach the line through JS, never through a `run:` script: a branch name is
+      # attacker-controlled on a public repo.
+      - name: Build the branch_deleted line
+        id: line
+        uses: actions/github-script@v9
+        env:
+          CHANNEL: ${{ vars.FLEET_CI_CHANNEL_ID }}
+        with:
+          script: |
+            // The `ci_run_completed` line's encoder, byte for byte: the fleet parses both with one grammar.
+            const enc = (v) =>
+              encodeURIComponent(String(v))
+                .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+                .replaceAll('%2F', '/');
+            const repo = context.payload.repository.full_name;
+            // `delete` names the short ref; a full one is reduced to it.
+            const branch = String(context.payload.ref ?? '').replace(/^refs\/heads\//, '');
+            if (context.payload.ref_type !== 'branch' || branch === '') {
+              core.info(`not a branch deletion (ref_type=${context.payload.ref_type}): nothing to post`);
+              return;
+            }
+            const line = ['branch_deleted', `repo=${enc(repo)}`, `branch=${enc(branch)}`].join(' ');
+            const channel = process.env.CHANNEL;
+            if (!channel) {
+              core.setFailed('the repo variable FLEET_CI_CHANNEL_ID is not set');
+              return;
+            }
+            // Slack drops metadata whose event_type is not snake_case (a dot is refused).
+            const metadata = { event_type: 'pickypaws_branch_deleted', event_payload: { repo, branch } };
+            core.info(line);
+            core.setOutput(
+              'payload',
+              JSON.stringify({ channel, text: line, mrkdwn: false, unfurl_links: false, unfurl_media: false, metadata }),
+            );
+
+      - name: Post it as the Fleet Ops bot
+        if: steps.line.outputs.payload != ''
         uses: slackapi/slack-github-action@v4
         with:
           method: chat.postMessage
