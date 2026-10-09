@@ -44,4 +44,4 @@ The CI line for this repo lands in the fleet test channel (`#fleet-pruebas`).
 
 ADR-088 smoke A: a line written outside the fleet.
 
-ADR-088 smoke B: another line written outside the fleet.
+ADR-088 smoke B: another line written outside the fleet (edited after the request).
